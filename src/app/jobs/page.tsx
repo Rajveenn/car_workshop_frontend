@@ -44,7 +44,8 @@ export default function JobsPage() {
       (job) =>
         job.customerName.toLowerCase().includes(term) ||
         job.customerPhone.toLowerCase().includes(term) ||
-        (job.invoiceNumber ?? "").toLowerCase().includes(term)
+        (job.invoiceNumber ?? "").toLowerCase().includes(term) ||
+        job.plateNumber.toLowerCase().includes(term)
     );
   }, [jobs, searchTerm]);
 
