@@ -1,0 +1,9 @@
+
+/node_modules
+/.history
+.env
+yarn.lock
+/.next
+/public
+.env.local
+package-lock.json
