@@ -142,18 +142,18 @@ export default function JobDetailPage() {
       : "");
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-[9/10] mx-auto p-6 bg-white shadow rounded">
       <div className="flex justify-between items-center mb-3">
         <button
           onClick={() => router.push("/jobs")}
-          className="text-blue-700 underline text-xs"
+          className="bg-slate-800 flex justify-between items-center text-left px-4 py-2 rounded font-medium text-white text-xs"
         >
           ← Back
         </button>
         <div className="space-x-2">
           <button
             onClick={handleDownloadPDF}
-            className="text-xs bg-blue-600 text-white px-2 py-1 rounded"
+            className="text-xs bg-blue-600 text-white px-4 py-2 rounded"
           >
             Download PDF
           </button>
@@ -161,7 +161,7 @@ export default function JobDetailPage() {
             <a
               href={whatsappLink}
               target="_blank"
-              className="text-xs bg-green-600 text-white px-2 py-1 rounded"
+              className="text-xs bg-green-600 text-white px-4 py-2 rounded"
             >
               Share via WhatsApp
             </a>

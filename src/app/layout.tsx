@@ -1,36 +1,24 @@
 // File: app/layout.tsx
+"use client"
 import "./globals.css";
-import Navbar from "./components/Navbar";
-import Loader from "./components/Loader";
 import { Toaster } from "react-hot-toast";
+import { usePathname } from "next/navigation";
+import Nav from "./components/Navbar"; // or wherever your navbar lives
 
-export const metadata = {
-  title: "Anbaa Automobile Admin",
-};
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+  // Paths where you DON'T want to show the nav
+  const hideNavOn = ["/login", "/register"];
+
+  const showNav = !hideNavOn.includes(pathname);
+
   return (
     <html lang="en">
-      <body>
-        <Navbar />
-        <Loader />
-        <main className="p-4 max-w-6xl mx-auto">
-          {children}
-          <Toaster
-          position="top-center"
-          reverseOrder={false}
-          toastOptions={{
-            duration: 2500,
-            style: { cursor: "pointer" },
-            success: { duration: 2500 },
-            error: { duration: 2500 }
-          }}
-        />
-        </main>
+      <body className="flex flex-col min-h-screen">
+        {showNav && <Nav />}
+        <main className="flex-grow">{children}</main>
+        <Toaster position="top-center" />
       </body>
     </html>
   );
