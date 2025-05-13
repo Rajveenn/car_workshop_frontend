@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "../../../lib/api";
 import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 import { toast } from "react-hot-toast";
 import Loader from "../../components/Loader";
 
@@ -62,8 +63,6 @@ export default function JobDetailPage() {
       const canvas = await html2canvas(receiptRef.current);
       const imageData = canvas.toDataURL("image/png");
 
-      const pdfModule = await import("jspdf");
-      const jsPDF = pdfModule.jsPDF;
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "pt",
@@ -119,9 +118,7 @@ export default function JobDetailPage() {
       link.download = `Invoice-${invoiceNumber}.pdf`;
       link.click();
 
-      toast.success(
-        "Success"
-      );
+      toast.success("Success");
       router.refresh();
     } catch (err) {
       console.error("[PDF ERROR]", err);
