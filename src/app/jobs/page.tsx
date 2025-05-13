@@ -92,7 +92,7 @@ export default function JobsPage() {
         <table className="w-full table-auto border text-center">
           <thead>
             <tr className="bg-gray-100 uppercase">
-              <th className="p-2 border">Invoice Number</th>
+              <th className="p-2 border"><span className="font-bold text-red-600">Invoice Number</span></th>
               <th className="p-2 border">Customer</th>
               <th className="p-2 border">Phone</th>
               <th className="p-2 border">Plate</th>
@@ -144,7 +144,7 @@ export default function JobsPage() {
             </div>
             <div className="space-y-1 text-sm text-gray-700">
               <div>
-                <strong>Invoice:</strong> {job.invoiceNumber || "Not generated"}
+                <strong>Invoice:</strong> <span className="font-bold text-red-600">{job.invoiceNumber || "Not generated"}</span>
               </div>
               <div>
                 <strong>Phone:</strong> {job.customerPhone}
@@ -159,7 +159,7 @@ export default function JobsPage() {
                 <strong>Date:</strong>{" "}
                 {new Date(job.jobDate).toLocaleDateString()}
               </div>
-            </div>
+             </div>
           </div>
         ))}
       </div>
