@@ -26,7 +26,7 @@ export default function LoginPage() {
     } catch (err) {
 
       if (axios.isAxiosError(err) && err.response) {
-        setError(err || "Login failed");
+        setError(err.response.data?.message || "Login failed");
       } else {
         setError("Login failed");
       }
