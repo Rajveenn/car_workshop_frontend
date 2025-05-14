@@ -23,10 +23,10 @@ export default function LoginPage() {
       localStorage.setItem("token", res.data.token);
       toast.success("Login successful");
       router.push("/jobs");
-    } catch (err: any) {
-      console.log(err.response.data)
+    } catch (err) {
+
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data || "Login failed");
+        setError(err || "Login failed");
       } else {
         setError("Login failed");
       }
