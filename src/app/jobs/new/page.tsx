@@ -1,6 +1,6 @@
 // File: app/jobs/new/page.tsx
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import api from "../../../lib/api";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -13,9 +13,14 @@ interface JobDetail {
 }
 
 export default function NewJobPage() {
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+  const [carData, setCarData] = useState<{ make: string; models: string[] }[]>(
+    []
+  );
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [carModel, setCarModel] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
   const [labourCost, setLabourCost] = useState(0);
   const [jobDate, setJobDate] = useState("");
@@ -23,6 +28,15 @@ export default function NewJobPage() {
     { description: "", quantity: 1, cost: 0 },
   ]);
   const router = useRouter();
+
+  useEffect(() => {
+    api
+      .get("/car/carData")
+      .then((res) => {
+        setCarData(res.data.carData || []);
+      })
+      .catch((err) => console.error(err));
+  }, []);
 
   // Update a single job detail field
   const handleChange = (
@@ -43,6 +57,11 @@ export default function NewJobPage() {
     );
     setJobDetails(updated);
   };
+
+  const models = useMemo(
+    () => carData.find((c) => c.make === make)?.models || [],
+    [carData, make]
+  );
 
   // Add a new blank detail row
   const addJobDetail = () => {
@@ -67,7 +86,9 @@ export default function NewJobPage() {
   const clearForm = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setCarModel("");
+    setMake("");
+    setModel("");
+    setYear("");
     setPlateNumber("");
     setLabourCost(0);
     setJobDate("");
@@ -80,7 +101,8 @@ export default function NewJobPage() {
       await api.post("/jobs", {
         customerName,
         customerPhone,
-        carModel,
+        carModel: make + " " + model,
+        year,
         plateNumber,
         labourCost,
         jobDate,
@@ -92,8 +114,9 @@ export default function NewJobPage() {
       toast.success("Success");
       clearForm();
     } catch (err) {
+      console.log(err);
       if (axios.isAxiosError(err) && err.response) {
-        toast.error("❌ Failed to add data.");
+        toast.error("❌ Backend Error.");
       } else {
         toast.error("❌ Failed to add data.");
       }
@@ -127,12 +150,52 @@ export default function NewJobPage() {
         <p className="text-sm text-gray-500 uppercase">
           Fill in customers car model (e.g., Model: Proton Wira)
         </p>
-        <input
-          className="w-full border p-2 uppercase"
-          placeholder="Car Model"
-          value={carModel}
-          onChange={(e) => setCarModel(e.target.value)}
+        <select
+          value={make}
+          onChange={(e) => {
+            setMake(e.target.value);
+            setModel("");
+          }}
           required
+          className="w-full border p-2 uppercase text-gray-500"
+        >
+          <option value="" disabled>
+            Select Make
+          </option>
+          {carData.map((c) => (
+            <option key={c.make} value={c.make}>
+              {c.make}
+            </option>
+          ))}
+        </select>
+        <select
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          disabled={!make}
+          required
+          className="w-full border p-2 uppercase text-gray-500"
+        >
+          <option value="" disabled>
+            {make ? "Select Model" : "Choose Make First"}
+          </option>
+          {models.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <p className="text-sm text-gray-500 uppercase">
+          Fill in cars year manufactured (e.g., Year: 2005)
+        </p>
+        <input
+          type="number"
+          min="1900"
+          max={new Date().getFullYear()}
+          placeholder="Year (e.g. 2025)"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          required
+          className="w-full border p-2 uppercase text-gray-500"
         />
         <p className="text-sm text-gray-500 uppercase">
           Fill in customers plate number (e.g., Number: NBL8480)
@@ -154,7 +217,6 @@ export default function NewJobPage() {
           onChange={(e) => setJobDate(e.target.value)}
           required
         />
-
         <h2 className="font-semibold">Job Details</h2>
         <p className="text-sm text-gray-500 uppercase">
           Add all parts or services performed (e.g., Engine Oil Change, Brake
@@ -163,7 +225,6 @@ export default function NewJobPage() {
         <p className="text-sm text-gray-500 uppercase">
           Fill in quantity and cost for each item (e.g., Qty: 1, Cost: 150)
         </p>
-
         {jobDetails.map((item, index) => (
           <div key={index} className="flex flex-col sm:flex-row gap-2">
             <input
@@ -220,11 +281,9 @@ export default function NewJobPage() {
           onChange={(e) => setLabourCost(Math.max(0, Number(e.target.value)))}
           required
         />
-
         <div className="bg-gray-100 p-4 rounded text-right font-semibold">
           Total Cost: RM {totalCost.toFixed(2)}
         </div>
-
         <div className="flex space-x-2 justify-center">
           <button
             type="submit"

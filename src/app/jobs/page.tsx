@@ -13,6 +13,7 @@ interface Job {
   totalCost: number;
   jobDate: string;
   invoiceNumber: string;
+  carModel: string;
 }
 
 export default function JobsPage() {
@@ -20,7 +21,7 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
+  const pageSize = 10;
 
   useEffect(() => {
     fetchJobs();
@@ -45,7 +46,8 @@ export default function JobsPage() {
         job.customerName.toLowerCase().includes(term) ||
         job.customerPhone.toLowerCase().includes(term) ||
         (job.invoiceNumber ?? "").toLowerCase().includes(term) ||
-        job.plateNumber.toLowerCase().includes(term)
+        job.plateNumber.toLowerCase().includes(term) ||
+        job.carModel.toLowerCase().includes(term)
     );
   }, [jobs, searchTerm]);
 
@@ -93,9 +95,10 @@ export default function JobsPage() {
         <table className="w-full table-auto border text-center">
           <thead>
             <tr className="bg-gray-100 uppercase">
-              <th className="p-2 border"><span className="font-bold text-red-600">Invoice Number</span></th>
+              <th className="p-2 border">Invoice Number</th>
               <th className="p-2 border">Customer</th>
               <th className="p-2 border">Phone</th>
+              <th className="p-2 border">Model</th>
               <th className="p-2 border">Plate</th>
               <th className="p-2 border">Total</th>
               <th className="p-2 border">Date</th>
@@ -106,12 +109,18 @@ export default function JobsPage() {
             {paginatedJobs.map((job) => (
               <tr key={job._id} className="border-b hover:bg-gray-50">
                 <td className="p-2 border uppercase">
-                  {job.invoiceNumber || (
-                    <span className="text-red-600">Not generated</span>
-                  )}
+                  <span className="text-blue-800 font-semibold">
+                    {" "}
+                    {job.invoiceNumber || (
+                      <span className="text-red-600 font-bold">
+                        Invoice Not generated
+                      </span>
+                    )}{" "}
+                  </span>
                 </td>
                 <td className="p-2 border uppercase">{job.customerName}</td>
                 <td className="p-2 border uppercase">{job.customerPhone}</td>
+                <td className="p-2 border uppercase">{job.carModel}</td>
                 <td className="p-2 border uppercase">{job.plateNumber}</td>
                 <td className="p-2 border uppercase">RM {job.totalCost}</td>
                 <td className="p-2 border uppercase">
@@ -135,32 +144,43 @@ export default function JobsPage() {
             key={job._id}
             className="border rounded-lg p-4 shadow-lg hover:shadow-2xl"
           >
-            <div className="flex justify-between mb-2">
-              <span className="font-semibold uppercase">
-                {job.customerName}
+            <div className="flex justify-between mb-2 text-sm">
+              {/* <strong>Invoice :</strong>{" "} */}
+              <span className="text-blue-800 font-semibold">
+                {" "}
+                {job.invoiceNumber || (
+                  <span className="text-red-600 font-bold">
+                    Invoice Not generated
+                  </span>
+                )}{" "}
               </span>
               <Link href={`/jobs/${job._id}`}>
                 <span className="text-blue-800 underline text-xs">View</span>
               </Link>
             </div>
+
             <div className="space-y-1 text-sm text-gray-700">
+              <span className="font-semibold uppercase">
+                {job.customerName}
+              </span>
+              <div></div>
               <div>
-                <strong>Invoice:</strong> <span className="font-bold text-red-600">{job.invoiceNumber || "Not generated"}</span>
+                <strong>Phone :</strong> {job.customerPhone}
               </div>
               <div>
-                <strong>Phone:</strong> {job.customerPhone}
+                <strong>Model :</strong> {job.carModel}
               </div>
               <div>
-                <strong>Plate:</strong> {job.plateNumber}
+                <strong>Plate :</strong> {job.plateNumber}
               </div>
               <div>
-                <strong>Total:</strong> RM {job.totalCost}
+                <strong>Total :</strong> RM {job.totalCost}
               </div>
               <div>
-                <strong>Date:</strong>{" "}
+                <strong>Date :</strong>{" "}
                 {new Date(job.jobDate).toLocaleDateString()}
               </div>
-             </div>
+            </div>
           </div>
         ))}
       </div>
