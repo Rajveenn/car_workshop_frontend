@@ -49,7 +49,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="Email"
-                className="w-full border-none bg-white/10 p-3 rounded-md placeholder-gray-700 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border-none bg-white/50 p-3 rounded-md placeholder-gray-700 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}

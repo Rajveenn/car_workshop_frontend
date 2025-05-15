@@ -1,12 +1,20 @@
-// File: app/jobs/[id]/page.tsx
+// FULLY EDITABLE VERSION WITH MODAL FORM STYLE
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "../../../lib/api";
-import html2canvas from "html2canvas-pro";
-import { jsPDF } from "jspdf";
 import { toast } from "react-hot-toast";
 import Loader from "../../components/Loader";
+import html2pdf from "html2pdf.js";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Pencil,
+  Download,
+  MessageCircle,
+  CircleArrowLeft,
+  FileUp,
+  Delete,
+} from "lucide-react";
 
 interface JobDetail {
   description: string;
@@ -26,65 +34,133 @@ interface Job {
   jobDetails: JobDetail[];
   createdAt?: string;
   whatsappUrl?: string;
+  pdfUrl?: string;
+  invoiceNumber?: string;
 }
 
 export default function JobDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [job, setJob] = useState<Job | null>(null);
+  const [jobForm, setJobForm] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const receiptRef = useRef(null);
+  const [editCount, setEditCount] = useState(0);
+
+  const fetchJob = async () => {
+    try {
+      const res = await api.get(`/jobs/${id}`);
+      setJobForm(res.data);
+      const hasPdf = !!res.data.pdfUrl;
+      if (hasPdf) {
+        const match = res.data.pdfUrl.match(/_(\w+)-(\d+)/);
+        if (match) setEditCount(parseInt(match[2], 10));
+        else setEditCount(1);
+      }
+    } catch (error) {
+      console.error("Failed to fetch jobs", error);
+      router.push("/jobs");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        const res = await api.get(`/jobs/${id}`);
-        setJob(res.data);
-        if (res.data.whatsappUrl) {
-          setUploadedImageUrl(res.data.pdfUrl);
-        }
-      } catch (error) {
-        console.error("Failed to fetch jobs", error);
-        router.push("/jobs");
-      } finally {
-        setLoading(false);
-      }
-    };
     if (id) fetchJob();
-  }, [id, router]);
+  }, [id]);
+
+  const updateTotal = useMemo(() => {
+    if (!jobForm) return 0;
+    const partsTotal = jobForm.jobDetails.reduce(
+      (acc, item) =>
+        acc + (Number(item.quantity) || 0) * (Number(item.cost) || 0),
+      0
+    );
+    return Number(partsTotal) + Number(jobForm.labourCost);
+  }, [jobForm]);
+
+  const handleChange = <K extends keyof Job>(field: K, value: Job[K]) => {
+    if (!jobForm) return;
+    setJobForm((prev) => prev && { ...prev, [field]: value });
+  };
+
+  const handleDetailChange = <K extends keyof JobDetail>(
+    index: number,
+    field: K,
+    value: JobDetail[K]
+  ) => {
+    if (!jobForm) return;
+    const updatedDetails = [...jobForm.jobDetails];
+    updatedDetails[index] = { ...updatedDetails[index], [field]: value };
+    setJobForm((prev) => prev && { ...prev, jobDetails: updatedDetails });
+  };
+
+  const addPart = () => {
+    if (!jobForm) return;
+    setJobForm(
+      (prev) =>
+        prev && {
+          ...prev,
+          jobDetails: [
+            ...prev.jobDetails,
+            { description: "", quantity: 1, cost: 0 },
+          ],
+        }
+    );
+  };
+
+  const removePart = (index: number) => {
+    if (!jobForm) return;
+    const updatedDetails = jobForm.jobDetails.filter((_, i) => i !== index);
+    setJobForm((prev) => prev && { ...prev, jobDetails: updatedDetails });
+  };
+
+  const saveChanges = async () => {
+    if (!jobForm) return;
+    try {
+      const updatedJob = { ...jobForm, totalCost: updateTotal };
+      setEditCount((prev) => prev + 1);
+      await api.put(`/jobs/${jobForm._id}`, updatedJob);
+      setJobForm(updatedJob);
+      setEditing(false);
+      fetchJob();
+      toast.success("Changes saved.");
+    } catch {
+      toast.error("❌ Failed to save.");
+    }
+  };
 
   const handleDownloadPDF = async () => {
     setLoading(true);
     try {
-      if (!receiptRef.current)
-        return toast.error("❌ Receipt reference is missing");
+      if (!receiptRef.current || !jobForm) return toast.error("Missing data");
+      const baseInvoice = `${jobForm._id.slice(-7).toUpperCase()}`;
+      const invoiceNumber =
+        editCount > 0 ? `${baseInvoice}-${editCount}` : baseInvoice;
+      const element = receiptRef.current as HTMLElement;
+      const opt = {
+        margin: 0,
+        filename: `${jobForm.customerName}_${invoiceNumber}.pdf`,
+        image: { type: "jpeg", quality: 1 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      };
+      const pdfBlob: Blob = await html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .output("blob");
 
-      const canvas = await html2canvas(receiptRef.current);
-      const imageData = canvas.toDataURL("image/png");
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "pt",
-        format: "a4",
-      });
-      const imgProps = pdf.getImageProperties(imageData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imageData, "PNG", 0, 0, pdfWidth, pdfHeight);
-
-      const pdfBlob = pdf.output("blob");
-      const formData = new FormData();
-      formData.append("file", pdfBlob, `invoice-${invoiceNumber}.pdf`);
-
-      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_API_PRESET1;
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_API_PRESET1;
 
-      if (!uploadPreset || !cloudName) {
-        throw new Error("Cloudinary environment variables are not set");
-      }
-
-      formData.append("upload_preset", uploadPreset);
+      const formData = new FormData();
+      formData.append(
+        "file",
+        pdfBlob,
+        `${jobForm.customerName}_${invoiceNumber}.pdf`
+      );
+      formData.append("upload_preset", uploadPreset!);
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
@@ -93,168 +169,524 @@ export default function JobDetailPage() {
           body: formData,
         }
       );
-
       const data = await res.json();
-      if (!data.secure_url) throw new Error("Cloudinary upload failed");
-      setUploadedImageUrl(data.secure_url);
+      if (!data.secure_url) throw new Error("Upload failed");
 
-      const whatsappUrl =
-        job?.customerPhone && data.secure_url
-          ? `https://wa.me/${job.customerPhone}?text=${encodeURIComponent(
-              `Hi ${job.customerName}, here’s your invoice:\n${data.secure_url}`
-            )}`
-          : null;
+      const phoneNumber = jobForm.customerPhone
+        .replace(/[^\d]/g, "")
+        .replace(/^0/, "");
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=Here%20is%20your%20invoice%20link%20:%20${data.secure_url}`;
 
-      if (job && whatsappUrl) {
-        await api.put(`/jobs/${job._id}`, {
-          pdfUrl: data.secure_url,
-          whatsappUrl,
-          invoiceNumber,
-        });
-      }
+      await api.put(`/jobs/${jobForm._id}`, {
+        ...jobForm,
+        totalCost: updateTotal,
+        pdfUrl: data.secure_url,
+        whatsappUrl,
+        invoiceNumber,
+      });
 
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(pdfBlob);
-      link.download = `Invoice-${invoiceNumber}.pdf`;
-      link.click();
-
-      toast.success("Success");
-      router.refresh();
+      fetchJob();
+      setTimeout(() => {
+        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      }, 500);
+      toast.success("PDF uploaded");
     } catch (err) {
       console.error("[PDF ERROR]", err);
-      toast.error("❌ Failed to generate PDF. Please try again.");
+      toast.error("❌ Failed to upload PDF");
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) return <Loader />;
-  if (!job) return <p>Job not found</p>;
-
-  const invoiceNumber = `${job._id.slice(-7).toUpperCase()}`;
-
-  const whatsappLink =
-    job.whatsappUrl ||
-    (job.customerPhone && uploadedImageUrl
-      ? `https://wa.me/${job.customerPhone}?text=${encodeURIComponent(
-          `Hi ${job.customerName}, here’s your invoice:\n${uploadedImageUrl}`
-        )}`
-      : "");
+  if (!jobForm) return <p>Not found</p>;
 
   return (
-    <div className="max-w-[9/10] mx-auto p-6 bg-white shadow rounded">
-      <div className="flex justify-between items-center mb-3">
+    <div
+      style={{
+        maxWidth: "95%",
+        margin: "0 auto",
+        padding: 10,
+        background: "#fff",
+        borderRadius: 8,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
         <button
+          title="Back to Jobs"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 6,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            transition: "transform 0.2s ease-in-out",
+            backgroundColor: "#1E293B",
+            color: "white",
+          }}
           onClick={() => router.push("/jobs")}
-          className="bg-slate-800 flex justify-between items-center text-left px-4 py-2 rounded font-medium text-white text-xs"
         >
-          ← Back
+          <CircleArrowLeft size={16} />
         </button>
-        <div className="space-x-2">
+        <div style={{ display: "flex", gap: "8px" }}>
+          {/* {showPdfButton && ( */}
           <button
+            title="Generate PDF"
+            style={{
+              backgroundColor: "#F59E0B",
+              color: "white",
+              padding: "8px 16px",
+              borderRadius: 6,
+            }}
             onClick={handleDownloadPDF}
-            className="text-xs bg-blue-600 text-white px-4 py-2 rounded"
           >
-            Download PDF
+            <FileUp size={16} />
           </button>
-          {whatsappLink && (
-            <a
-              href={whatsappLink}
-              target="_blank"
-              className="text-xs bg-green-600 text-white px-4 py-2 rounded"
+          {/* )} */}
+          {!editing && (
+            <button
+              title="Edit"
+              style={{
+                backgroundColor: "#2563EB",
+                color: "white",
+                padding: "8px 16px",
+                borderRadius: 6,
+              }}
+              onClick={() => setEditing(true)}
             >
-              Share via WhatsApp
+              <Pencil size={16} />
+            </button>
+          )}
+          {jobForm.whatsappUrl && (
+            <a
+              title="Share via WhatsApp"
+              href={jobForm.whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                backgroundColor: "#25D366",
+                color: "white",
+                padding: "8px 16px",
+                borderRadius: 6,
+              }}
+            >
+              <MessageCircle size={16} />
+            </a>
+          )}
+          {jobForm.pdfUrl && (
+            <a
+              title="Download PDF"
+              href={jobForm.pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                backgroundColor: "#4B5563",
+                color: "white",
+                padding: "8px 16px",
+                borderRadius: 6,
+              }}
+            >
+              <Download size={16} />
             </a>
           )}
         </div>
       </div>
 
+      <AnimatePresence>
+        {editing && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 18 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 18 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "flex-start",
+              zIndex: 9999,
+              overflowY: "auto",
+              padding: "40px 18px",
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                background: "white",
+                padding: 24,
+                borderRadius: 8,
+                width: "600px",
+                marginTop: "18px",
+              }}
+            >
+              <h4>Edit Job</h4>
+              <label>
+                Name:
+                <input
+                  value={jobForm.customerName}
+                  onChange={(e) => handleChange("customerName", e.target.value)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginBottom: 8,
+                    border: "4px solid #ccc",
+                    borderRadius: 4,
+                    padding: 8,
+                    textTransform: "uppercase",
+                  }}
+                />
+              </label>
+              <label>
+                Phone:
+                <input
+                  value={jobForm.customerPhone}
+                  onChange={(e) =>
+                    handleChange("customerPhone", e.target.value)
+                  }
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginBottom: 8,
+                    border: "4px solid #ccc",
+                    borderRadius: 4,
+                    padding: 8,
+                    textTransform: "uppercase",
+                  }}
+                />
+              </label>
+              <label>
+                Plate:
+                <input
+                  value={jobForm.plateNumber}
+                  onChange={(e) => handleChange("plateNumber", e.target.value)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginBottom: 8,
+                    border: "4px solid #ccc",
+                    borderRadius: 4,
+                    padding: 8,
+                    textTransform: "uppercase",
+                  }}
+                />
+              </label>
+              <label>
+                Date:
+                <input
+                  type="date"
+                  value={jobForm.jobDate.split("T")[0]}
+                  onChange={(e) => handleChange("jobDate", e.target.value)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginBottom: 8,
+                    border: "4px solid #ccc",
+                    borderRadius: 4,
+                    padding: 8,
+                    textTransform: "uppercase",
+                  }}
+                />
+              </label>
+              <label>
+                Labour Cost:
+                <input
+                  type="number"
+                  value={jobForm.labourCost}
+                  onChange={(e) =>
+                    handleChange("labourCost", parseFloat(e.target.value))
+                  }
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    marginBottom: 8,
+                    border: "4px solid #ccc",
+                    borderRadius: 4,
+                    padding: 8,
+                    textTransform: "uppercase",
+                  }}
+                />
+              </label>
+              <h4>Parts</h4>
+              {jobForm.jobDetails.map((part, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", gap: 8, marginBottom: 8 }}
+                >
+                  <input
+                    placeholder="Description"
+                    value={part.description}
+                    onChange={(e) =>
+                      handleDetailChange(i, "description", e.target.value)
+                    }
+                    style={{
+                      flex: 2,
+                      width: 60,
+                      display: "block",
+                      marginBottom: 8,
+                      border: "4px solid #ccc",
+                      borderRadius: 4,
+                      padding: 8,
+                      textTransform: "uppercase",
+                    }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Qty"
+                    value={part.quantity}
+                    onChange={(e) =>
+                      handleDetailChange(
+                        i,
+                        "quantity",
+                        parseInt(e.target.value)
+                      )
+                    }
+                    style={{
+                      width: 60,
+                      display: "block",
+                      marginBottom: 8,
+                      border: "4px solid #ccc",
+                      borderRadius: 4,
+                      padding: 8,
+                      textTransform: "uppercase",
+                    }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Cost"
+                    value={part.cost}
+                    onChange={(e) =>
+                      handleDetailChange(i, "cost", parseFloat(e.target.value))
+                    }
+                    style={{
+                      width: 80,
+                      display: "block",
+                      marginBottom: 8,
+                      border: "4px solid #ccc",
+                      borderRadius: 4,
+                      padding: 8,
+                      textTransform: "uppercase",
+                    }}
+                  />
+                  {jobForm.jobDetails.length > 1 && (
+                    <button
+                      onClick={() => removePart(i)}
+                      style={{
+                        color: "red",
+                        display: "block",
+                        marginBottom: 12,
+                        backgroundColor: "#FFF",
+                        padding: "8px 16px",
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Delete size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addPart}
+                style={{
+                  marginBottom: 12,
+                  backgroundColor: "#1E293B",
+                  color: "white",
+                  padding: "8px 16px",
+                  borderRadius: 6,
+                }}
+              >
+                + Add Parts
+              </button>
+              <div
+                style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}
+              >
+                <button
+                  style={{
+                    marginBottom: 12,
+                    backgroundColor: "#1E293B",
+                    color: "white",
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                  }}
+                  onClick={() => setEditing(false)}
+                >
+                  Cancel Editting
+                </button>
+                <button
+                  style={{
+                    marginBottom: 12,
+                    backgroundColor: "#1E293B",
+                    color: "white",
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                  }}
+                  onClick={saveChanges}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div
         ref={receiptRef}
-        className="bg-white shadow p-6 rounded space-y-4 border text-sm uppercase"
+        style={{
+          backgroundColor: "#fff",
+          padding: 24,
+          border: "3px solid #ccc",
+          borderRadius: 6,
+          boxShadow: "0 0 6px rgba(0,0,0,0.1)",
+          textTransform: "uppercase",
+        }}
       >
-        <h1 className="text-2xl font-bold text-center">Anbaa Automobile</h1>
-        <p className="text-center text-lg text-blue-800">Auto Repair Invoice</p>
-
-        <div className="flex justify-between text-xs border-t pt-2">
-          <span>
-            <strong>Invoice Number:</strong>{" "}
-            <span className="font-bold text-red-600">{invoiceNumber}</span>
+        <h2 style={{ textAlign: "center", fontSize: 30, fontWeight: "bold" }}>
+          Anbaa Automobile
+        </h2>
+        <p
+          style={{
+            textAlign: "center",
+            color: "#1E3A8A",
+            fontSize: 18,
+            fontWeight: "bold",
+          }}
+        >
+          Auto Repair Invoice
+        </p>
+        <hr style={{ margin: "18px 0", borderTopWidth: "2PX" }} />
+        <p style={{ color: "black", fontSize: 18 }}>
+          <strong>Invoice Number</strong>:{" "}
+          <span style={{ color: "#FF0505", fontSize: 18, fontWeight: "bold" }}>
+            {jobForm._id.slice(-7).toUpperCase()}
           </span>
-          <span>
-            <strong>Date:</strong>{" "}
-            <span className="font-bold text-red-600">
-              {new Date(job.jobDate).toLocaleDateString()}
-            </span>
-          </span>
-        </div>
-
-        <div className="border-t pt-3">
-          <p>
-            <strong>Customer:</strong> {job.customerName}
-          </p>
-          <p>
-            <strong>Phone:</strong> {job.customerPhone}
-          </p>
-          <p>
-            <strong>Car:</strong> {job.carModel} ({job.plateNumber})
-          </p>
-        </div>
-
-        <div className="border-t pt-3">
-          <h2 className="font-semibold mb-2">Parts / Services</h2>
-          <table className="w-full text-left text-xs border">
-            <thead className="bg-gray-100 text-center">
-              <tr>
-                <th className="border px-2 py-1 ">
-                  {" "}
-                  <span className="text-red-600">Item</span>
-                </th>
-                <th className="border px-2 py-1">
-                  <span className="text-red-600">Qty</span>
-                </th>
-                <th className="border px-2 py-1">
-                  <span className="text-red-600">Cost (RM)</span>
-                </th>
+        </p>
+        <p style={{ color: "black", fontSize: 18 }}>
+          <strong>Name</strong>: {jobForm.customerName}
+        </p>
+        <p style={{ color: "black", fontSize: 18 }}>
+          <strong>Phone</strong>: {jobForm.customerPhone}
+        </p>
+        <p style={{ color: "black", fontSize: 18 }}>
+          <strong>Car</strong>: {jobForm.carModel} ({jobForm.plateNumber})
+        </p>
+        <p style={{ color: "black", fontSize: 18 }}>
+          <strong>Date</strong>:{" "}
+          {new Date(jobForm.jobDate).toLocaleDateString()}
+        </p>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginTop: 12,
+            fontSize: 18,
+            textAlign: "center",
+          }}
+        >
+          <thead style={{ backgroundColor: "#f0f0f0" }}>
+            <tr>
+              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                <p style={{ color: "red" }}>Item</p>
+              </th>
+              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                <p style={{ color: "red" }}>Qty</p>
+              </th>
+              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                <p style={{ color: "red" }}>Cost Per Item (RM)</p>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {jobForm.jobDetails.map((part, i) => (
+              <tr key={i}>
+                <td style={{ border: "3px solid #ccc", padding: "8px" }}>
+                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                    {part.description}
+                  </p>
+                </td>
+                <td
+                  style={{
+                    border: "3px solid #ccc",
+                    padding: "8px",
+                  }}
+                >
+                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                    {part.quantity}
+                  </p>
+                </td>
+                <td
+                  style={{
+                    border: "3px solid #ccc",
+                    padding: "8px",
+                  }}
+                >
+                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                    {part.cost.toFixed(2)}
+                  </p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {job.jobDetails.map((item, i) => (
-                <tr key={i} className="text-center">
-                  <td className="border px-2 py-1 font-bold">
-                    <span className="text-blue-800">{item.description}</span>
-                  </td>
-                  <td className="border px-2 py-1 font-bold">
-                    <span className="text-blue-800">{item.quantity}</span>
-                  </td>
-                  <td className="border px-2 py-1 font-bold">
-                    <span className="text-blue-800">
-                      {item.cost.toFixed(2)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="border-t pt-3 text-right space-y-1">
-          <p>
-            <strong>Labour:</strong> RM {job.labourCost.toFixed(2)}
-          </p>
-          <p className="text-lg font-bold">
-            Total: RM {job.totalCost.toFixed(2)}
-          </p>
-        </div>
-
-        <p className="text-center text-xs text-gray-800 pt-1 font-bold">
+            ))}
+          </tbody>
+        </table>
+        <hr style={{ margin: "18px 0", borderTopWidth: "2PX" }} />
+        <p
+          style={{
+            color: "black",
+            fontSize: 18,
+            marginTop: 10,
+            textAlign: "right",
+          }}
+        >
+          <strong>Labour Cost</strong>: RM {jobForm.labourCost.toFixed(2)}
+        </p>
+        <p style={{ fontWeight: "bold", fontSize: 18, textAlign: "right" }}>
+          Total Cost: RM {jobForm.totalCost.toFixed(2)}
+        </p>
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 14,
+            color: "#1E3A8A",
+            fontWeight: "bold",
+            marginTop: 20,
+          }}
+        >
           5, Lorong Taman Perniagaan 1/1, Senawang Business Park, 70450
           Seremban, Negeri Sembilan
         </p>
-        <p className="text-center text-xs text-gray-700 pt-1 font-bold">
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 14,
+            color: "#1E3A8A",
+            fontWeight: "bold",
+            marginTop: 10,
+          }}
+        >
           Phone: 014-966 3143
         </p>
-        <p className="text-center text-xs text-gray-700 pt-1 font-bold">
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 14,
+            color: "#1E3A8A",
+            fontWeight: "bold",
+            marginTop: 10,
+          }}
+        >
           Thank you for choosing Anbaa Automobile
         </p>
       </div>

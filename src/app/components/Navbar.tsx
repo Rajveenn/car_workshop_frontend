@@ -1,147 +1,115 @@
-// File: components/Navbar.tsx
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { TypeAnimation } from "react-type-animation";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { LogOut } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // const [isSolutionsOpen, setIsSolutionsOpen] = useState(false);
 
-  // const solutionsVariants = {
-  //   open: { opacity: 1, height: "auto" },
-  //   closed: { opacity: 0, height: 0 },
-  // };
-
-  function handleLogout() {
+  const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
-  }
+  };
+
+  const linkClass = (path: string) =>
+    pathname.startsWith(path)
+      ? "underline underline-offset-4 text-blue-300"
+      : "hover:text-blue-200";
 
   return (
-    <nav className="bg-slate-800 text-white p-4 shadow-lg hover:shadow-3xl w-full h-full">
-      <div className="container lg:px-8 mx-auto my-auto flex justify-between items-center place-items-center">
-        <p className=" text-white font-bold">
-          {" "}
+    <nav className="bg-slate-800 text-white p-4 shadow-md sticky top-0 z-50">
+      <div className="container mx-auto flex justify-between items-center px-4">
+        <div className="text-lg font-bold">
           <TypeAnimation
-            style={{
-              whiteSpace: "pre-line",
-              display: "block",
-            }}
             sequence={[
               "Anbaa",
               1200,
-              `Anbaa Automobile`,
+              "Anbaa Automobile",
               1200,
-              `Anbaa Automobile Admin.`,
-              1200,
-              ``,
+              "Admin Panel",
               1200,
               "",
+              1000,
             ]}
+            wrapper="span"
             repeat={Infinity}
+            className="inline-block"
           />
-        </p>
+        </div>
 
-        <div className="md:hidden text-center justify-center">
+        <div className="md:hidden">
           <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
             {isMenuOpen ? (
-              <motion.div
-                key="close-icon"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.4, ease: [0.3, 0.07, 0.19, 0.97] }}
-              >
-                <XMarkIcon className="w-6 h-6 text-white" />
-              </motion.div>
+              <XMarkIcon className="w-6 h-6" />
             ) : (
-              <motion.div
-                key="menu-icon"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.4, ease: [0.3, 0.07, 0.19, 0.97] }}
-              >
-                <Bars3Icon className="w-6 h-6 text-white" />
-              </motion.div>
+              <Bars3Icon className="w-6 h-6" />
             )}
           </button>
         </div>
 
-        <div className="space-x-4 hidden md:flex items-center">
-          <Link
-            className={pathname.startsWith("/jobs") ? "underline" : ""}
-            href="/jobs"
-          >
+        <div className="hidden md:flex gap-6 items-center">
+          <Link href="/jobs" className={linkClass("/jobs")}>
             Jobs
           </Link>
-          <Link
-            className={pathname.startsWith("/earnings") ? "underline" : ""}
-            href="/earnings"
-          >
+          <Link href="/earnings" className={linkClass("/earnings")}>
             Earnings
           </Link>
-          <button
+          <motion.button
             onClick={handleLogout}
-            className="ml-4 text-sm bg-white text-blue-700 px-2 py-1 rounded"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 bg-white text-blue-700 px-4 py-2 rounded shadow hover:shadow-lg transition"
           >
-            Logout
-          </button>
+            <LogOut size={16} /> Logout
+          </motion.button>
         </div>
       </div>
-      {isMenuOpen && (
-        <div className="md:hidden bg-slate-800 shadow-2xl w-full mb-4">
-          <div className="flex flex-col mt-4">
-            <motion.div
-              className="items-center justify-center m-1"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <Link
-                className={pathname.startsWith("/jobs") ? "underline" : ""}
-                href="/jobs"
-              >
-                <button className="flex justify-center items-center text-center px-4 py-2 rounded font-medium text-black bg-slate-200">
-                  Invoices
-                  {/* <FaCaretRight className="w-5 h-5 transform transition-transform text-blue-800" /> */}
-                </button>
+
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="md:hidden bg-slate-900 mt-4 rounded-lg shadow-lg p-4 space-y-4"
+          >
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link href="/jobs" onClick={() => setIsMenuOpen(false)}>
+                <span
+                  className={`block px-4 py-2 rounded ${linkClass("/jobs")}`}
+                >
+                  Jobs
+                </span>
               </Link>
             </motion.div>
-            <motion.div
-              className="items-center justify-center m-1"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <Link
-                className={pathname.startsWith("/earnings") ? "underline" : ""}
-                href="/earnings"
-              >
-                <button className="flex justify-between items-center text-left px-4 py-2 rounded font-medium text-black bg-slate-200">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link href="/earnings" onClick={() => setIsMenuOpen(false)}>
+                <span
+                  className={`block px-4 py-2 rounded ${linkClass(
+                    "/earnings"
+                  )}`}
+                >
                   Earnings
-                </button>
+                </span>
               </Link>
             </motion.div>
-            <motion.div
-              className="items-center justify-center m-1"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <button
                 onClick={handleLogout}
-                className="flex justify-between items-center text-left px-4 py-2 rounded font-medium text-black bg-slate-200"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-blue-700 rounded hover:shadow-md"
               >
-                Logout
+                <LogOut size={16} /> Logout
               </button>
             </motion.div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
