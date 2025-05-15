@@ -184,15 +184,22 @@ export default function JobDetailPage() {
         whatsappUrl,
         invoiceNumber,
       });
+      // const link = document.createElement("a");
+      // link.href = whatsappUrl;
+      // link.target = "_blank";
+      // link.rel = "noopener noreferrer";
+      // document.body.appendChild(link);
+      // link.click();
+      // document.body.removeChild(link);
+
+      window.open(
+        `https://api.whatsapp.com/send?phone=${phoneNumber}&text=Here%20is%20your%20invoice%20link%20:%20${data.secure_url}`,
+        "_blank",
+        "noopener, noreferrer"
+      );
 
       fetchJob();
-      const link = document.createElement("a");
-      link.href = whatsappUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+
       toast.success("PDF uploaded");
     } catch (err) {
       console.error("[PDF ERROR]", err);
