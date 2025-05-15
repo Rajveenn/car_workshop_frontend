@@ -149,7 +149,6 @@ export default function JobDetailPage() {
       const pdfBlob: Blob = await html2pdf()
         .set(opt)
         .from(element)
-        .save()
         .output("blob");
 
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
