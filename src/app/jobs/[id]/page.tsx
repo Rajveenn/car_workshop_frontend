@@ -54,6 +54,7 @@ export default function JobDetailPage() {
       const hasPdf = !!res.data.pdfUrl;
       if (hasPdf) {
         const match = res.data.pdfUrl.match(/_(\w+)-(\d+)/);
+        // console.log(match)
         if (match) setEditCount(parseInt(match[2], 10));
         else setEditCount(1);
       }
@@ -186,9 +187,13 @@ export default function JobDetailPage() {
       });
 
       fetchJob();
-      setTimeout(() => {
-        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      }, 500);
+      const link = document.createElement("a");
+      link.href = whatsappUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       toast.success("PDF uploaded");
     } catch (err) {
       console.error("[PDF ERROR]", err);
