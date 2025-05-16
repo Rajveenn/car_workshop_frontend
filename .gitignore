@@ -7,3 +7,4 @@ yarn.lock
 /public
 .env.local
 package-lock.json
+/src/.history

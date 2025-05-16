@@ -639,73 +639,56 @@ export default function JobDetailPage() {
           <strong>Date</strong>:{" "}
           {new Date(jobForm.jobDate).toLocaleDateString()}
         </p>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: 12,
-            fontSize: 18,
-            textAlign: "center",
-          }}
-        >
-          <thead style={{ backgroundColor: "#f0f0f0" }}>
-            <tr>
-              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
-                <p style={{ color: "red" }}>Item</p>
-              </th>
-              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
-                <p style={{ color: "red" }}>Qty</p>
-              </th>
-              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
-                <p style={{ color: "red" }}>Cost Per Unit (RM)</p>
-              </th>
-              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
-                <p style={{ color: "red" }}>Amount (RM)</p>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobForm.jobDetails.map((part, i) => (
-              <tr key={i}>
-                <td style={{ border: "3px solid #ccc", padding: "8px" }}>
-                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
-                    {part.description}
-                  </p>
-                </td>
-                <td
-                  style={{
-                    border: "3px solid #ccc",
-                    padding: "8px",
-                  }}
-                >
-                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
-                    {part.quantity}
-                  </p>
-                </td>
-                <td
-                  style={{
-                    border: "3px solid #ccc",
-                    padding: "8px",
-                  }}
-                >
-                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
-                    {part.cost.toFixed(2)}
-                  </p>
-                </td>
-                <td
-                  style={{
-                    border: "3px solid #ccc",
-                    padding: "8px",
-                  }}
-                >
-                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
-                    {(part.quantity * part.cost).toFixed(2)}
-                  </p>
-                </td>
+        <div className="responsive-table-wrapper">
+          <table className="invoice-table">
+            <thead>
+              <tr>
+                <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                  <p style={{ color: "red" }}>Item</p>
+                </th>
+                <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                  <p style={{ color: "red" }}>Qty</p>
+                </th>
+                <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                  <p style={{ color: "red" }}>Cost Per Unit (RM)</p>
+                </th>
+                <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                  <p style={{ color: "red" }}>Amount (RM)</p>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {jobForm.jobDetails.map((part, i) => (
+                <tr key={i}>
+                  <td style={{ border: "3px solid #ccc", padding: "8px" }}>
+                    {" "}
+                    <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                      {part.description}
+                    </p>
+                  </td>
+                  <td style={{ border: "3px solid #ccc", padding: "8px" }}>
+                    {" "}
+                    <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                      {part.quantity}
+                    </p>
+                  </td>
+                  <td style={{ border: "3px solid #ccc", padding: "8px" }}>
+                    {" "}
+                    <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                      {part.cost.toFixed(2)}
+                    </p>
+                  </td>
+                  <td style={{ border: "3px solid #ccc", padding: "8px" }}>
+                    {" "}
+                    <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                      {(part.quantity * part.cost).toFixed(2)}
+                    </p>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <hr style={{ margin: "18px 0", borderTopWidth: "2PX" }} />
         <p
           style={{
