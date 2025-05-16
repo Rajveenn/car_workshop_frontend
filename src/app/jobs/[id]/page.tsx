@@ -45,7 +45,7 @@ export default function JobDetailPage() {
   const [jobForm, setJobForm] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const receiptRef = useRef(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
   const [editCount, setEditCount] = useState(0);
 
   const fetchJob = async () => {
@@ -135,13 +135,22 @@ export default function JobDetailPage() {
   const handleDownloadPDF = async () => {
     setLoading(true);
     try {
-      if (!receiptRef.current || !jobForm) return toast.error("Missing data");
+      if (!receiptRef.current || !jobForm) {
+        toast.error("Missing receipt or job data");
+        return;
+      }
+
+      const element = receiptRef.current;
+      if (!element) {
+        throw new Error("Invalid DOM element for PDF generation");
+      }
+
       const html2pdf = (await import("html2pdf.js")).default;
-      
+
       const baseInvoice = `${jobForm._id.slice(-7).toUpperCase()}`;
       const invoiceNumber =
         editCount > 0 ? `${baseInvoice}-${editCount}` : baseInvoice;
-      const element = receiptRef.current as HTMLElement;
+
       const opt = {
         margin: 0,
         filename: `${jobForm.customerName}_${invoiceNumber}.pdf`,
@@ -188,26 +197,13 @@ export default function JobDetailPage() {
         whatsappUrl,
         invoiceNumber,
       });
-      // const link = document.createElement("a");
-      // link.href = whatsappUrl;
-      // link.target = "_blank";
-      // link.rel = "noopener noreferrer";
-      // document.body.appendChild(link);
-      // link.click();
-      // document.body.removeChild(link);
 
-      window.open(
-        `https://api.whatsapp.com/send?phone=${phoneNumber}&text=Here%20is%20your%20invoice%20link%20:%20${data.secure_url}`,
-        "_blank",
-        "noopener, noreferrer"
-      );
-
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
       fetchJob();
-
       toast.success("PDF uploaded");
     } catch (err) {
       console.error("[PDF ERROR]", err);
-      toast.error("❌ Failed to upload PDF");
+      toast.error("❌ Failed to generate/upload PDF");
     } finally {
       setLoading(false);
     }
