@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import api from "../../../lib/api";
 import { toast } from "react-hot-toast";
 import Loader from "../../components/Loader";
-import html2pdf from "html2pdf.js";
+const html2pdfPromise = import("html2pdf.js");
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Pencil,
@@ -147,6 +147,8 @@ export default function JobDetailPage() {
         html2canvas: { scale: 2 },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
       };
+      
+      const html2pdf = (await html2pdfPromise).default;
       const pdfBlob: Blob = await html2pdf()
         .set(opt)
         .from(element)
@@ -241,7 +243,7 @@ export default function JobDetailPage() {
       case "PJPP":
         return "#dc2626"; // Red
       case "PP":
-        return "#D4009F"
+        return "#D4009F";
       case "PJ":
         return "#19642A"; // Red
       case "Completed":
