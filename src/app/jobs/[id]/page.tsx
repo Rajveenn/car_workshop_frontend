@@ -209,6 +209,47 @@ export default function JobDetailPage() {
     }
   };
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!jobForm) return;
+    try {
+      await api.put(`/jobs/${jobForm._id}`, { status: newStatus });
+      toast.success("Status updated");
+      fetchJob();
+    } catch {
+      toast.error("❌ Failed to update status");
+    }
+  };
+
+  const getStatusLabel = (status: string | undefined) => {
+    switch (status) {
+      case "PJPP":
+        return "Pending Job & Pending Payment";
+      case "PP":
+        return "Pending Payment";
+      case "PJ":
+        return "Pending Job";
+      case "Completed":
+        return "Completed";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const getStatusColor = (status: string | undefined) => {
+    switch (status) {
+      case "PJPP":
+        return "#dc2626"; // Red
+      case "PP":
+        return "#D4009F"
+      case "PJ":
+        return "#19642A"; // Red
+      case "Completed":
+        return "#2563eb"; // Blue
+      default:
+        return "#000000"; // Default black
+    }
+  };
+
   if (loading) return <Loader />;
   if (!jobForm) return <p>Not found</p>;
 
@@ -616,7 +657,10 @@ export default function JobDetailPage() {
                 <p style={{ color: "red" }}>Qty</p>
               </th>
               <th style={{ border: "3px solid #ccc", padding: "8px" }}>
-                <p style={{ color: "red" }}>Cost Per Item (RM)</p>
+                <p style={{ color: "red" }}>Cost Per Unit (RM)</p>
+              </th>
+              <th style={{ border: "3px solid #ccc", padding: "8px" }}>
+                <p style={{ color: "red" }}>Amount (RM)</p>
               </th>
             </tr>
           </thead>
@@ -646,6 +690,16 @@ export default function JobDetailPage() {
                 >
                   <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
                     {part.cost.toFixed(2)}
+                  </p>
+                </td>
+                <td
+                  style={{
+                    border: "3px solid #ccc",
+                    padding: "8px",
+                  }}
+                >
+                  <p style={{ color: "#1E3A8A", fontWeight: "bold" }}>
+                    {(part.quantity * part.cost).toFixed(2)}
                   </p>
                 </td>
               </tr>
@@ -700,6 +754,53 @@ export default function JobDetailPage() {
         >
           Thank you for choosing Anbaa Automobile
         </p>
+      </div>
+      <div
+        style={{
+          marginTop: "2rem",
+          padding: "1rem",
+          background: "#F8FAFC",
+          borderRadius: 8,
+        }}
+      >
+        <h4
+          style={{
+            marginBottom: 8,
+            fontSize: 18,
+            color: "#1E3A8A",
+            fontWeight: "bold",
+          }}
+        >
+          Job Status
+        </h4>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 16,
+            fontWeight: "bold",
+          }}
+        >
+          Current Status:{" "}
+          <span
+            style={{
+              fontSize: 16,
+              color: getStatusColor(jobForm.status),
+              fontWeight: "bold",
+            }}
+          >
+            {getStatusLabel(jobForm.status)}
+          </span>
+        </p>
+        <select
+          value={jobForm.status || "PJPP"}
+          onChange={(e) => handleStatusChange(e.target.value)}
+          style={{ padding: "8px", borderRadius: 6, border: "3px solid #ccc" }}
+        >
+          <option value="PJPP">Pending Job & Pending Payment</option>
+          <option value="PP">Pending Payment</option>
+          <option value="PJ">Pending Job</option>
+          <option value="Completed">Completed</option>
+        </select>
       </div>
     </div>
   );

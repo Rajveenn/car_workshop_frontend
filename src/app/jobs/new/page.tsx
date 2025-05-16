@@ -5,6 +5,7 @@ import api from "../../../lib/api";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { CircleArrowLeft } from "lucide-react";
 
 interface JobDetail {
   description: string;
@@ -125,6 +126,30 @@ export default function NewJobPage() {
 
   return (
     <div className="max-w-[9/10] mx-auto p-6 bg-white shadow rounded">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
+        <button
+          title="Back to Jobs"
+          style={{
+            padding: "8px 16px",
+            borderRadius: 6,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            transition: "transform 0.2s ease-in-out",
+            backgroundColor: "#1E293B",
+            color: "white",
+          }}
+          onClick={() => router.push("/jobs")}
+        >
+          <CircleArrowLeft size={16} />
+        </button>
+      </div>
       <h1 className="text-2xl font-bold mb-4">Create New Job</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-sm text-gray-500 uppercase">
@@ -289,20 +314,14 @@ export default function NewJobPage() {
             type="submit"
             className="flex bg-blue-700 justify-between items-center text-left px-4 py-2 rounded font-medium text-white text-xs"
           >
-            Submit
+            Submit Data
           </button>
           <button
             type="button"
             onClick={clearForm}
             className="flex bg-gray-400 justify-between items-center text-left px-4 py-2 rounded font-medium text-white text-xs"
           >
-            Clear
-          </button>
-          <button
-            onClick={() => router.push("/jobs")}
-            className="bg-slate-800 flex justify-between items-center text-left px-4 py-2 rounded font-medium text-white text-xs"
-          >
-            Back
+            Clear Form
           </button>
         </div>
       </form>

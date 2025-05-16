@@ -14,6 +14,37 @@ interface Job {
   jobDate: string;
   invoiceNumber: string;
   carModel: string;
+  status: string;
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "PJPP":
+      return "text-red-600";
+    case "PJ":
+      return "text-[#19642A]";
+    case "PP":
+      return "text-[#D4009F]";
+    case "Completed":
+      return "text-blue-600";
+    default:
+      return "text-gray-600";
+  }
+}
+
+function getStatusLabel(status: string) {
+  switch (status) {
+    case "PJPP":
+      return "Pending Job & Payment";
+    case "PP":
+      return "Pending Payment";
+    case "PJ":
+      return "Pending Job";
+    case "Completed":
+      return "Completed";
+    default:
+      return "Unknown";
+  }
 }
 
 export default function JobsPage() {
@@ -38,7 +69,6 @@ export default function JobsPage() {
     }
   }
 
-  // Filter jobs based on search term
   const filteredJobs = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return jobs.filter(
@@ -51,7 +81,6 @@ export default function JobsPage() {
     );
   }, [jobs, searchTerm]);
 
-  // Calculate pagination
   const totalPages = Math.max(Math.ceil(filteredJobs.length / pageSize), 1);
   const paginatedJobs = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -70,7 +99,6 @@ export default function JobsPage() {
 
   return (
     <div className="max-w-[9/10] mx-auto p-6 bg-white shadow rounded">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 space-y-3 md:space-y-0">
         <h1 className="text-2xl font-bold">Invoices</h1>
         <div className="flex space-x-2 w-full md:w-auto">
@@ -90,11 +118,11 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Desktop table */}
       <div className="hidden md:block uppercase">
         <table className="w-full table-auto border text-center">
           <thead>
             <tr className="bg-gray-100 uppercase">
+              <th className="p-2 border">Status</th>
               <th className="p-2 border">Invoice Number</th>
               <th className="p-2 border">Customer</th>
               <th className="p-2 border">Phone</th>
@@ -108,14 +136,18 @@ export default function JobsPage() {
           <tbody>
             {paginatedJobs.map((job) => (
               <tr key={job._id} className="border-b hover:bg-gray-50">
+                <td className={`p-2 border font-bold`}>
+                  <span className={`${getStatusColor(job.status)}`}>
+                    {getStatusLabel(job.status)}
+                  </span>
+                </td>
                 <td className="p-2 border uppercase">
                   <span className="text-blue-800 font-semibold">
-                    {" "}
                     {job.invoiceNumber || (
                       <span className="text-red-600 font-bold">
                         Invoice Not generated
                       </span>
-                    )}{" "}
+                    )}
                   </span>
                 </td>
                 <td className="p-2 border uppercase">{job.customerName}</td>
@@ -137,7 +169,6 @@ export default function JobsPage() {
         </table>
       </div>
 
-      {/* Mobile list */}
       <div className="md:hidden space-y-4 uppercase">
         {paginatedJobs.map((job) => (
           <div
@@ -145,14 +176,12 @@ export default function JobsPage() {
             className="border rounded-lg p-4 shadow-lg hover:shadow-2xl"
           >
             <div className="flex justify-between mb-2 text-sm">
-              {/* <strong>Invoice :</strong>{" "} */}
               <span className="text-blue-800 font-semibold">
-                {" "}
                 {job.invoiceNumber || (
                   <span className="text-red-600 font-bold">
                     Invoice Not generated
                   </span>
-                )}{" "}
+                )}
               </span>
               <Link href={`/jobs/${job._id}`}>
                 <span className="text-blue-800 underline text-xs">View</span>
@@ -160,10 +189,12 @@ export default function JobsPage() {
             </div>
 
             <div className="space-y-1 text-sm text-gray-700">
+              <div className={`font-bold ${getStatusColor(job.status)}`}>
+                {getStatusLabel(job.status)}
+              </div>
               <span className="font-semibold uppercase">
                 {job.customerName}
               </span>
-              <div></div>
               <div>
                 <strong>Phone :</strong> {job.customerPhone}
               </div>
@@ -185,7 +216,6 @@ export default function JobsPage() {
         ))}
       </div>
 
-      {/* Pagination Controls */}
       <div className="flex justify-center items-center mt-4 space-x-2">
         <button
           onClick={() => setCurrentPage(1)}
