@@ -148,8 +148,8 @@ export default function JobDetailPage() {
       const html2pdf = (await import("html2pdf.js")).default;
 
       const baseInvoice = `${jobForm._id.slice(-7).toUpperCase()}`;
-      const invoiceNumber =
-        editCount > 0 ? `${baseInvoice}-${editCount}` : baseInvoice;
+      const newEditCount = editCount + 1;
+      const invoiceNumber = `${baseInvoice}-${newEditCount}`;
 
       const opt = {
         margin: 0,
@@ -159,10 +159,9 @@ export default function JobDetailPage() {
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
       };
 
-      const pdfBlob: Blob = await html2pdf()
-        .set(opt)
-        .from(element)
-        .output("blob");
+      const worker = html2pdf().set(opt).from(element);
+      const pdfBlob: Blob = await worker.outputPdf("blob");
+      // await worker.save(); // optional, triggers local download
 
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_API_PRESET1;
@@ -196,6 +195,7 @@ export default function JobDetailPage() {
         pdfUrl: data.secure_url,
         whatsappUrl,
         invoiceNumber,
+        editCount: newEditCount,
       });
 
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
