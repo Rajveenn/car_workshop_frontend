@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import api from "../../../lib/api";
 import { toast } from "react-hot-toast";
 import Loader from "../../components/Loader";
-const html2pdfPromise = import("html2pdf.js");
+// const html2pdfPromise = import("html2pdf.js");
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Pencil,
@@ -136,6 +136,8 @@ export default function JobDetailPage() {
     setLoading(true);
     try {
       if (!receiptRef.current || !jobForm) return toast.error("Missing data");
+      const html2pdf = (await import("html2pdf.js")).default;
+      
       const baseInvoice = `${jobForm._id.slice(-7).toUpperCase()}`;
       const invoiceNumber =
         editCount > 0 ? `${baseInvoice}-${editCount}` : baseInvoice;
@@ -147,8 +149,7 @@ export default function JobDetailPage() {
         html2canvas: { scale: 2 },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
       };
-      
-      const html2pdf = (await html2pdfPromise).default;
+
       const pdfBlob: Blob = await html2pdf()
         .set(opt)
         .from(element)
