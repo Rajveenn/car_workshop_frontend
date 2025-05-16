@@ -77,7 +77,8 @@ export default function JobsPage() {
         job.customerPhone.toLowerCase().includes(term) ||
         (job.invoiceNumber ?? "").toLowerCase().includes(term) ||
         job.plateNumber.toLowerCase().includes(term) ||
-        job.carModel.toLowerCase().includes(term)
+        job.carModel.toLowerCase().includes(term) ||
+        getStatusLabel(job.status).toLowerCase().includes(term)
     );
   }, [jobs, searchTerm]);
 
