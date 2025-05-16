@@ -23,6 +23,23 @@ ChartJS.register(
   ArcElement
 );
 
+// ✅ Injected interfaces
+interface JobDetail {
+  description: string;
+  quantity: number;
+  cost: number;
+}
+
+interface Job {
+  _id: string;
+  totalCost: number;
+  carModel: string;
+  customerName: string;
+  plateNumber: string;
+  jobDetails?: JobDetail[];
+  status: string;
+}
+
 export default function EarningsPage() {
   const [range, setRange] = useState("daily");
   const [customRange, setCustomRange] = useState(false);
@@ -30,7 +47,7 @@ export default function EarningsPage() {
   const [end, setEnd] = useState("");
   const [groupBy, setGroupBy] = useState("carModel");
   const [summary, setSummary] = useState({ totalEarnings: 0, count: 0 });
-  const [jobs, setJobs] = useState([]);
+  const [jobs, setJobs] = useState<Job[]>([]); // ✅ Typed properly now
   const [status, setStatus] = useState("all");
 
   const fetchSummary = async () => {
@@ -55,7 +72,7 @@ export default function EarningsPage() {
   }, [range, start, end, customRange, status]);
 
   const groupedData = useMemo(() => {
-    const result = {};
+    const result: Record<string, number> = {};
 
     jobs.forEach((job) => {
       if (groupBy === "partsChanged") {
@@ -66,7 +83,7 @@ export default function EarningsPage() {
           });
         }
       } else {
-        const key = job[groupBy] || "Unknown";
+        const key = (job[groupBy as keyof Job] as string) || "Unknown";
         result[key] = (result[key] || 0) + job.totalCost;
       }
     });
@@ -81,26 +98,26 @@ export default function EarningsPage() {
         label: `Earnings by ${groupBy}`,
         data: Object.values(groupedData),
         backgroundColor: [
-          "#1D4ED8", // blue-700
-          "#10B981", // emerald-500
-          "#F59E0B", // amber-500
-          "#EF4444", // red-500
-          "#8B5CF6", // violet-500
-          "#F43F5E", // rose-500
-          "#3B82F6", // blue-500
-          "#22C55E", // green-500
-          "#EAB308", // yellow-500
-          "#F87171", // red-400
-          "#A855F7", // purple-500
-          "#EC4899", // pink-500
-          "#0EA5E9", // sky-500
-          "#14B8A6", // teal-500
-          "#D946EF", // fuchsia-500
-          "#FB923C", // orange-400
-          "#4ADE80", // green-400
-          "#60A5FA", // blue-400
-          "#FCD34D", // yellow-300
-          "#FCA5A5", // red-300
+          "#1D4ED8",
+          "#10B981",
+          "#F59E0B",
+          "#EF4444",
+          "#8B5CF6",
+          "#F43F5E",
+          "#3B82F6",
+          "#22C55E",
+          "#EAB308",
+          "#F87171",
+          "#A855F7",
+          "#EC4899",
+          "#0EA5E9",
+          "#14B8A6",
+          "#D946EF",
+          "#FB923C",
+          "#4ADE80",
+          "#60A5FA",
+          "#FCD34D",
+          "#FCA5A5",
         ],
       },
     ],

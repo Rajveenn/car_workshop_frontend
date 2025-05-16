@@ -36,6 +36,7 @@ interface Job {
   whatsappUrl?: string;
   pdfUrl?: string;
   invoiceNumber?: string;
+  status: string;
 }
 
 export default function JobDetailPage() {
