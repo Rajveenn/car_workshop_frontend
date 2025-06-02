@@ -1,23 +1,39 @@
-// File: components/Loader.tsx
-"use client";
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import React from "react";
+import { TypeAnimation } from "react-type-animation";
+// import Image from "next/image";
 
-export default function Loader() {
-  const [loading, setLoading] = useState(false);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    setLoading(true);
-    const timeout = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timeout);
-  }, [pathname]);
-
-  if (!loading) return null;
-
+const Loader = () => {
   return (
-    <div className="fixed top-0 left-0 w-full h-full bg-white/60 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"></div>
+    <div className="loader-container">
+      <div className="loader-box rounded-lg mx-auto flex items-center px-4 justify-center shadow-2xl">
+        {/* <Image
+          src="/images/jrv_logo2.webp"
+          width={150}
+          height={50}
+          alt="jrv_logo2"
+          className="h-14 w-30 bg-black"
+        /> */}
+        <div className="text-2xl font-bold text-white">
+          <TypeAnimation
+            sequence={[
+              "Anbaa",
+              1200,
+              "Anbaa Automobile",
+              1200,
+              "Anbaa Automobile Admin",
+              1200,
+              "",
+              1000,
+            ]}
+            wrapper="span"
+            repeat={Infinity}
+            className="inline-block"
+          />
+        </div>
+        <div className="loading-line mt-8"></div>
+      </div>
     </div>
   );
-}
+};
+
+export default Loader;

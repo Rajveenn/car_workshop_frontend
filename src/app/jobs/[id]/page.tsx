@@ -37,6 +37,7 @@ interface Job {
   pdfUrl?: string;
   invoiceNumber?: string;
   status: string;
+  isQuote: boolean
 }
 
 export default function JobDetailPage() {
@@ -47,6 +48,8 @@ export default function JobDetailPage() {
   const [editing, setEditing] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const [editCount, setEditCount] = useState(0);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const fetchJob = async () => {
     try {
@@ -66,6 +69,13 @@ export default function JobDetailPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (showConvertModal) {
+      const openSound = new Audio("/sounds/prompt.mp3");
+      openSound.play();
+    }
+  }, [showConvertModal]);
 
   useEffect(() => {
     if (id) fetchJob();
@@ -126,8 +136,12 @@ export default function JobDetailPage() {
       setJobForm(updatedJob);
       setEditing(false);
       fetchJob();
+      const successSound = new Audio("/sounds/success.mp3");
+      successSound.play();
       toast.success("Changes saved.");
     } catch {
+      const successSound = new Audio("/sounds/alert.mp3");
+      successSound.play();
       toast.error("❌ Failed to save.");
     }
   };
@@ -141,15 +155,14 @@ export default function JobDetailPage() {
       }
 
       const element = receiptRef.current;
-      if (!element) {
-        throw new Error("Invalid DOM element for PDF generation");
-      }
-
       const html2pdf = (await import("html2pdf.js")).default;
 
       const baseInvoice = `${jobForm._id.slice(-7).toUpperCase()}`;
       const newEditCount = editCount + 1;
-      const invoiceNumber = `${baseInvoice}-${newEditCount}`;
+      const isQuote = jobForm.isQuote;
+      const invoiceNumber = `${
+        !isQuote ? "INV-" : ""
+      }${baseInvoice}-${newEditCount}`;
 
       const opt = {
         margin: 0,
@@ -161,7 +174,6 @@ export default function JobDetailPage() {
 
       const worker = html2pdf().set(opt).from(element);
       const pdfBlob: Blob = await worker.outputPdf("blob");
-      // await worker.save(); // optional, triggers local download
 
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_API_PRESET1;
@@ -176,10 +188,7 @@ export default function JobDetailPage() {
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: formData }
       );
       const data = await res.json();
       if (!data.secure_url) throw new Error("Upload failed");
@@ -188,21 +197,39 @@ export default function JobDetailPage() {
         .replace(/[^\d]/g, "")
         .replace(/^0/, "");
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=Here%20is%20your%20invoice%20link%20:%20${data.secure_url}`;
+      const finalStatus = pendingStatus ?? jobForm.status;
+      const finalQuoteStatus = finalStatus === "Completed" ? false : isQuote;
 
-      await api.put(`/jobs/${jobForm._id}`, {
-        ...jobForm,
+      const updatedJob = {
+        _id: jobForm._id,
+        customerName: jobForm.customerName,
+        customerPhone: jobForm.customerPhone,
+        carModel: jobForm.carModel,
+        plateNumber: jobForm.plateNumber,
+        jobDate: jobForm.jobDate,
+        labourCost: jobForm.labourCost,
+        jobDetails: jobForm.jobDetails,
         totalCost: updateTotal,
         pdfUrl: data.secure_url,
         whatsappUrl,
         invoiceNumber,
-        editCount: newEditCount,
-      });
+        isQuote: finalQuoteStatus,
+        status: finalStatus,
+      };
+
+      await api.put(`/jobs/${jobForm._id}`, updatedJob);
 
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
       fetchJob();
-      toast.success("PDF uploaded");
+      const successSound = new Audio("/sounds/success.mp3");
+      successSound.play();
+
+      toast.success("PDF uploaded and job updated");
     } catch (err) {
       console.error("[PDF ERROR]", err);
+
+      const successSound = new Audio("/sounds/alert.mp3");
+      successSound.play();
       toast.error("❌ Failed to generate/upload PDF");
     } finally {
       setLoading(false);
@@ -211,12 +238,16 @@ export default function JobDetailPage() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!jobForm) return;
-    try {
+    if (newStatus === "Completed" && jobForm.isQuote) {
+      setPendingStatus("Completed");
+      setShowConvertModal(true);
+    } else {
       await api.put(`/jobs/${jobForm._id}`, { status: newStatus });
+
+      const successSound = new Audio("/sounds/prompt.mp3");
+      successSound.play();
       toast.success("Status updated");
       fetchJob();
-    } catch {
-      toast.error("❌ Failed to update status");
     }
   };
 
@@ -247,6 +278,41 @@ export default function JobDetailPage() {
         return "#2563eb"; // Blue
       default:
         return "#000000"; // Default black
+    }
+  };
+
+  const convertAndGeneratePDF = async () => {
+    if (!jobForm || !pendingStatus) return;
+
+    try {
+      await api.put(`/jobs/${jobForm._id}`, {
+        status: pendingStatus,
+        isQuote: false,
+      });
+
+      toast.success("Converted to Invoice");
+      setShowConvertModal(false);
+      setPendingStatus(null);
+
+      setJobForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: pendingStatus,
+              isQuote: false,
+            }
+          : prev
+      );
+
+      // Wait briefly for UI updates before PDF generation
+      setTimeout(() => {
+        handleDownloadPDF();
+      }, 50);
+    } catch (err) {
+      toast.error("Failed to convert and generate PDF");
+      const successSound = new Audio("/sounds/alert.mp3");
+      successSound.play();
+      console.error(err);
     }
   };
 
@@ -617,7 +683,7 @@ export default function JobDetailPage() {
             fontWeight: "bold",
           }}
         >
-          Auto Repair Invoice
+          {jobForm.isQuote ? "Auto Repair Quotation" : "Auto Repair Invoice"}
         </p>
         <hr style={{ margin: "18px 0", borderTopWidth: "2PX" }} />
         <p style={{ color: "black", fontSize: 18 }}>
@@ -738,53 +804,102 @@ export default function JobDetailPage() {
           Thank you for choosing Anbaa Automobile
         </p>
       </div>
-      <div
-        style={{
-          marginTop: "2rem",
-          padding: "1rem",
-          background: "#F8FAFC",
-          borderRadius: 8,
-        }}
-      >
-        <h4
+      {jobForm.isQuote && (
+        <div
           style={{
-            marginBottom: 8,
-            fontSize: 18,
-            color: "#1E3A8A",
-            fontWeight: "bold",
+            marginTop: "2rem",
+            padding: "1rem",
+            background: "#F8FAFC",
+            borderRadius: 8,
           }}
         >
-          Job Status
-        </h4>
-        <p
-          style={{
-            marginBottom: 8,
-            fontSize: 16,
-            fontWeight: "bold",
-          }}
-        >
-          Current Status:{" "}
-          <span
+          <h4
             style={{
-              fontSize: 16,
-              color: getStatusColor(jobForm.status),
+              marginBottom: 8,
+              fontSize: 18,
+              color: "#1E3A8A",
               fontWeight: "bold",
             }}
           >
-            {getStatusLabel(jobForm.status)}
-          </span>
-        </p>
-        <select
-          value={jobForm.status || "PJPP"}
-          onChange={(e) => handleStatusChange(e.target.value)}
-          style={{ padding: "8px", borderRadius: 6, border: "3px solid #ccc" }}
-        >
-          <option value="PJPP">Pending Job & Pending Payment</option>
-          <option value="PP">Pending Payment</option>
-          <option value="PJ">Pending Job</option>
-          <option value="Completed">Completed</option>
-        </select>
-      </div>
+            Job Status
+          </h4>
+          <p
+            style={{
+              marginBottom: 8,
+              fontSize: 16,
+              fontWeight: "bold",
+            }}
+          >
+            Current Status:{" "}
+            <span
+              style={{
+                fontSize: 16,
+                color: getStatusColor(jobForm.status),
+                fontWeight: "bold",
+              }}
+            >
+              {getStatusLabel(jobForm.status)}
+            </span>
+          </p>
+          <select
+            value={jobForm.status || "PJPP"}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            style={{
+              padding: "8px",
+              borderRadius: 6,
+              border: "3px solid #ccc",
+            }}
+          >
+            <option value="PJPP">Pending Job & Pending Payment</option>
+            <option value="PP">Pending Payment</option>
+            <option value="PJ">Pending Job</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+      )}
+      <AnimatePresence>
+        {showConvertModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white p-6 rounded-md shadow-lg max-w-md w-full text-center"
+            >
+              <h2 className="text-xl font-bold text-blue-800 mb-4">
+                Convert to Invoice?
+              </h2>
+              <p className="mb-6">
+                You’re about to mark this job as <strong>Completed</strong> and
+                convert the quotation into an invoice. Do you want to proceed?
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  className="bg-gray-400 text-white px-4 py-2 rounded"
+                  onClick={() => {
+                    setShowConvertModal(false);
+                    setPendingStatus(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bg-blue-700 text-white px-4 py-2 rounded"
+                  onClick={convertAndGeneratePDF}
+                >
+                  Convert & Complete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
