@@ -196,7 +196,7 @@ export default function JobDetailPage() {
       const phoneNumber = jobForm.customerPhone
         .replace(/[^\d]/g, "")
         .replace(/^0/, "");
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=Here%20is%20your%20invoice%20link%20:%20${data.secure_url}`;
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=60${phoneNumber}&text=Here%20is%20your%20invoice%20link%20:%20${data.secure_url}`;
       const finalStatus = pendingStatus ?? jobForm.status;
       const finalQuoteStatus = finalStatus === "Completed" ? false : isQuote;
 
