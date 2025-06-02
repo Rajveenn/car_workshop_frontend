@@ -4,7 +4,11 @@
 .env
 yarn.lock
 /.next
-/public
 .env.local
 package-lock.json
 /src/.history
+public/file.svg
+public/globe.svg
+public/next.svg
+public/vercel.svg
+public/window.svg
