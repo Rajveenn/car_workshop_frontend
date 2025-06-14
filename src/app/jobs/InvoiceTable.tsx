@@ -13,18 +13,19 @@ interface Job {
   isQuote?: boolean;
 }
 
-function getStatusColor(status: string) {
+// Updated function to return classes for a badge-style display
+function getStatusClasses(status: string) {
   switch (status) {
     case "Completed":
-      return "text-blue-600"; // Invoice status
+      return "bg-blue-600 text-white";
     case "PJPP":
-      return "text-red-600";
+      return "bg-red-600 text-white";
     case "PJ":
-      return "text-[#19642A]";
+      return "bg-green-700 text-white"; // Using a dark green background
     case "PP":
-      return "text-[#D4009F]";
+      return "bg-pink-600 text-white"; // Using a pink/magenta background
     default:
-      return "text-gray-600";
+      return "bg-gray-500 text-white";
   }
 }
 
@@ -64,24 +65,25 @@ export default function InvoiceTable({ jobs }: { jobs: Job[] }) {
           <tbody>
             {jobs.map((job) => (
               <tr key={job._id} className="border-b hover:bg-gray-50">
-                <td
-                  className={`p-2 border font-bold
-                  `}
-                >
-                  <span className={getStatusColor(job.status)}>
+                <td className="p-2 border">
+                  {/* Updated Status Display */}
+                  <span
+                    className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusClasses(
+                      job.status
+                    )}`}
+                  >
                     {getStatusLabel(job.status)}
                   </span>
                 </td>
 
                 <td className="p-2 border uppercase font-bold">
-                  {job.invoiceNumber || (
-                    <span className="text-blue-600">
-                    {job.invoiceNumber || (
-                      <span className="text-red-600">
-                        Invoice Not Generated
-                      </span>
-                    )}
-                  </span>
+                  {/* Simplified Invoice Number Display */}
+                  {job.invoiceNumber ? (
+                    job.invoiceNumber
+                  ) : (
+                    <span className="text-red-600 font-normal normal-case">
+                      Not Generated
+                    </span>
                   )}
                 </td>
                 <td className="p-2 border font-semibold">{job.customerName}</td>
@@ -115,17 +117,26 @@ export default function InvoiceTable({ jobs }: { jobs: Job[] }) {
             key={job._id}
             className="border rounded-lg p-4 shadow-lg hover:shadow-2xl"
           >
-            <div className={`font-bold ${getStatusColor(job.status)}`}>
-              {getStatusLabel(job.status)}
+            <div className="flex justify-between items-start mb-2">
+                {/* Updated Status Display for Mobile */}
+                <span
+                    className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusClasses(
+                    job.status
+                    )}`}
+                >
+                    {getStatusLabel(job.status)}
+                </span>
+                {/* Simplified Invoice Number Display for Mobile */}
+                <div className="text-sm font-bold text-right">
+                    {job.invoiceNumber ? (
+                        <span className="text-blue-600">{job.invoiceNumber}</span>
+                    ) : (
+                        <span className="text-red-600 font-normal normal-case">Not Generated</span>
+                    )}
+                </div>
             </div>
-            <div className="text-sm font-bold">
-              <span className="text-blue-600">
-                {job.invoiceNumber || (
-                  <span className="text-red-600">Invoice Not Generated</span>
-                )}
-              </span>
-            </div>
-            <div className="text-sm font-semibold">
+
+            <div className="text-sm font-semibold mt-4">
               Name: {job.customerName}
             </div>
             <div className="text-sm font-semibold">Model: {job.carModel}</div>
@@ -138,12 +149,12 @@ export default function InvoiceTable({ jobs }: { jobs: Job[] }) {
             <div className="text-sm font-semibold">
               Date: {new Date(job.jobDate).toLocaleDateString()}
             </div>
-            <div className="mt-2">
+            <div className="mt-4">
               <Link
                 href={`/jobs/${job._id}`}
                 className="text-blue-800 underline text-xs font-bold"
               >
-                View
+                View Details
               </Link>
             </div>
           </div>

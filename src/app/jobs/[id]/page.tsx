@@ -37,7 +37,7 @@ interface Job {
   pdfUrl?: string;
   invoiceNumber?: string;
   status: string;
-  isQuote: boolean
+  isQuote: boolean;
 }
 
 export default function JobDetailPage() {
@@ -49,6 +49,8 @@ export default function JobDetailPage() {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [editCount, setEditCount] = useState(0);
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showGeneratePdfModal, setShowGeneratePdfModal] = useState(false);
+  const [showPostEditModal, setShowPostEditModal] = useState(false); // New state for post-edit popup
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const fetchJob = async () => {
@@ -71,11 +73,11 @@ export default function JobDetailPage() {
   };
 
   useEffect(() => {
-    if (showConvertModal) {
+    if (showConvertModal || showGeneratePdfModal || showPostEditModal) {
       const openSound = new Audio("/sounds/prompt.mp3");
       openSound.play();
     }
-  }, [showConvertModal]);
+  }, [showConvertModal, showGeneratePdfModal, showPostEditModal]);
 
   useEffect(() => {
     if (id) fetchJob();
@@ -139,6 +141,8 @@ export default function JobDetailPage() {
       const successSound = new Audio("/sounds/success.mp3");
       successSound.play();
       toast.success("Changes saved.");
+      // New: Show the post-edit modal
+      setShowPostEditModal(true);
     } catch {
       const successSound = new Audio("/sounds/alert.mp3");
       successSound.play();
@@ -201,15 +205,8 @@ export default function JobDetailPage() {
       const finalQuoteStatus = finalStatus === "Completed" ? false : isQuote;
 
       const updatedJob = {
-        _id: jobForm._id,
-        customerName: jobForm.customerName,
-        customerPhone: jobForm.customerPhone,
-        carModel: jobForm.carModel,
-        plateNumber: jobForm.plateNumber,
-        jobDate: jobForm.jobDate,
-        labourCost: jobForm.labourCost,
-        jobDetails: jobForm.jobDetails,
-        totalCost: updateTotal,
+        ...jobForm, // Use the current state of jobForm
+        totalCost: updateTotal, // Make sure total is updated
         pdfUrl: data.secure_url,
         whatsappUrl,
         invoiceNumber,
@@ -227,9 +224,8 @@ export default function JobDetailPage() {
       toast.success("PDF uploaded and job updated");
     } catch (err) {
       console.error("[PDF ERROR]", err);
-
-      const successSound = new Audio("/sounds/alert.mp3");
-      successSound.play();
+      const errorSound = new Audio("/sounds/alert.mp3");
+      errorSound.play();
       toast.error("❌ Failed to generate/upload PDF");
     } finally {
       setLoading(false);
@@ -281,7 +277,7 @@ export default function JobDetailPage() {
     }
   };
 
-  const convertAndGeneratePDF = async () => {
+  const handleConvertToInvoice = async () => {
     if (!jobForm || !pendingStatus) return;
 
     try {
@@ -291,9 +287,7 @@ export default function JobDetailPage() {
       });
 
       toast.success("Converted to Invoice");
-      setShowConvertModal(false);
-      setPendingStatus(null);
-
+      
       setJobForm((prev) =>
         prev
           ? {
@@ -303,17 +297,31 @@ export default function JobDetailPage() {
             }
           : prev
       );
-
-      // Wait briefly for UI updates before PDF generation
-      setTimeout(() => {
-        handleDownloadPDF();
-      }, 50);
+      
+      setShowConvertModal(false);
+      setPendingStatus(null);
+      setShowGeneratePdfModal(true);
     } catch (err) {
-      toast.error("Failed to convert and generate PDF");
-      const successSound = new Audio("/sounds/alert.mp3");
-      successSound.play();
+      toast.error("Failed to convert to invoice.");
+      const errorSound = new Audio("/sounds/alert.mp3");
+      errorSound.play();
       console.error(err);
     }
+  };
+  
+  const handleConfirmGeneratePdf = () => {
+    setShowGeneratePdfModal(false);
+    setTimeout(() => {
+        handleDownloadPDF();
+    }, 50);
+  };
+
+  // New: Handler for the post-edit popup
+  const handleConfirmPostEditGenerate = () => {
+    setShowPostEditModal(false);
+    setTimeout(() => {
+        handleDownloadPDF();
+    }, 50);
   };
 
   if (loading) return <Loader />;
@@ -353,7 +361,6 @@ export default function JobDetailPage() {
           <CircleArrowLeft size={16} />
         </button>
         <div style={{ display: "flex", gap: "8px" }}>
-          {/* {showPdfButton && ( */}
           <button
             title="Generate PDF"
             style={{
@@ -366,7 +373,6 @@ export default function JobDetailPage() {
           >
             <FileUp size={16} />
           </button>
-          {/* )} */}
           {!editing && (
             <button
               title="Edit"
@@ -525,7 +531,7 @@ export default function JobDetailPage() {
                   type="number"
                   value={jobForm.labourCost}
                   onChange={(e) =>
-                    handleChange("labourCost", parseFloat(e.target.value))
+                    handleChange("labourCost", parseFloat(e.target.value) || 0)
                   }
                   style={{
                     display: "block",
@@ -569,7 +575,7 @@ export default function JobDetailPage() {
                       handleDetailChange(
                         i,
                         "quantity",
-                        parseInt(e.target.value)
+                        parseInt(e.target.value) || 1
                       )
                     }
                     style={{
@@ -587,7 +593,7 @@ export default function JobDetailPage() {
                     placeholder="Cost"
                     value={part.cost}
                     onChange={(e) =>
-                      handleDetailChange(i, "cost", parseFloat(e.target.value))
+                      handleDetailChange(i, "cost", parseFloat(e.target.value) || 0)
                     }
                     style={{
                       width: 80,
@@ -767,7 +773,7 @@ export default function JobDetailPage() {
           <strong>Labour Cost</strong>: RM {jobForm.labourCost.toFixed(2)}
         </p>
         <p style={{ fontWeight: "bold", fontSize: 18, textAlign: "right" }}>
-          Total Cost: RM {jobForm.totalCost.toFixed(2)}
+          Total Cost: RM {updateTotal.toFixed(2)}
         </p>
         <p
           style={{
@@ -857,6 +863,8 @@ export default function JobDetailPage() {
           </select>
         </div>
       )}
+
+      {/* MODAL 1: CONVERT TO INVOICE */}
       <AnimatePresence>
         {showConvertModal && (
           <motion.div
@@ -891,9 +899,91 @@ export default function JobDetailPage() {
                 </button>
                 <button
                   className="bg-blue-700 text-white px-4 py-2 rounded"
-                  onClick={convertAndGeneratePDF}
+                  onClick={handleConvertToInvoice}
                 >
                   Convert & Complete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 2: GENERATE PDF AFTER CONVERSION */}
+      <AnimatePresence>
+        {showGeneratePdfModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10001]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white p-6 rounded-md shadow-lg max-w-md w-full text-center"
+            >
+              <h2 className="text-xl font-bold text-green-700 mb-4">
+                Generate PDF?
+              </h2>
+              <p className="mb-6">
+                The job has been converted. Would you like to generate and send the PDF invoice now?
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  className="bg-gray-400 text-white px-4 py-2 rounded"
+                  onClick={() => setShowGeneratePdfModal(false)}
+                >
+                  No, Later
+                </button>
+                <button
+                  className="bg-blue-700 text-white px-4 py-2 rounded"
+                  onClick={handleConfirmGeneratePdf}
+                >
+                  Yes, Generate PDF
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* NEW MODAL 3: GENERATE PDF AFTER EDIT */}
+      <AnimatePresence>
+        {showPostEditModal && jobForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10002]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white p-6 rounded-md shadow-lg max-w-md w-full text-center"
+            >
+              <h2 className="text-xl font-bold text-blue-800 mb-4">
+                {jobForm.isQuote ? 'Generate New Quotation?' : 'Generate New Invoice?'}
+              </h2>
+              <p className="mb-6">
+                Changes have been saved. Would you like to generate an updated PDF document?
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  className="bg-gray-400 text-white px-4 py-2 rounded"
+                  onClick={() => setShowPostEditModal(false)}
+                >
+                  No, Later
+                </button>
+                <button
+                  className="bg-blue-700 text-white px-4 py-2 rounded"
+                  onClick={handleConfirmPostEditGenerate}
+                >
+                  Yes, Generate
                 </button>
               </div>
             </motion.div>
